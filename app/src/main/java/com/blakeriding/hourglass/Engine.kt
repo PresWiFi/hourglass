@@ -104,7 +104,15 @@ object Engine {
         val u = Usage(snap.apps, web, ::catOf)
         val block = decideApp(s, top, now, u) { Apps.isExempt(app, it) }
             ?: browser?.takeIf { it.first == top }?.let { decideWeb(s, it.second, now, u) }
-        if (block != null) show(block) else warnLimits(s, top, now, u)
+        if (block == null) {
+            warnLimits(s, top, now, u)
+            return
+        }
+        // Usage events can name an app that isn't really on screen: e.g. the Google app resumes an invisible
+        // overlay when the app switcher opens. Only block when the app's own window is the active one.
+        val active = GuardService.instance?.activeAppPackage()
+        if (active != null && active != top) return
+        show(block)
     }
 
     /** Today's fold; on a new day, files yesterday into history and fills any gaps from the event log. */

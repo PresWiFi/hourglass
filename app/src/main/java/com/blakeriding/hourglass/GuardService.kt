@@ -98,6 +98,19 @@ class GuardService : AccessibilityService() {
         handler.postDelayed(recheck, 300L)
     }
 
+    /**
+     * Package of the app window that's actually active on screen, or null if it can't be told
+     * (then the caller trusts the usage events). Recents, the home screen and the notification
+     * shade are owned by the launcher or System UI, not by the app underneath.
+     */
+    fun activeAppPackage(): String? = try {
+        val ws = windows
+        val active = ws.firstOrNull { it.isActive } ?: ws.firstOrNull { it.isFocused }
+        active?.root?.packageName?.toString()
+    } catch (_: Exception) {
+        null
+    }
+
     private fun AccessibilityNodeInfo.has(text: String) = findAccessibilityNodeInfosByText(text).isNotEmpty()
 
     private fun isSensitive(pkg: String?) = pkg != null && SENSITIVE.any { it in pkg }
