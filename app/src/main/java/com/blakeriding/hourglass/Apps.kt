@@ -86,7 +86,7 @@ object Apps {
 
     /** Never blocked and not counted as screen time: home screens, system UI, Hourglass itself. */
     fun isSystemSurface(context: Context, pkg: String): Boolean =
-        pkg == context.packageName || pkg in launchers(context) || SURFACE.any { pkg.contains(it) }
+        pkg == context.packageName || pkg in launchers(context) || pkg in SYSTEM_SEARCH || SURFACE.any { pkg.contains(it) }
 
     /** Never blocked, but counted: phone, emergency, and Settings (so you can always fix Wi-Fi). */
     fun isExempt(context: Context, pkg: String): Boolean =
@@ -104,6 +104,12 @@ object Apps {
 
     fun invalidateCategories() = declared.clear()
 
+    // The phone's own search, opened by swiping down on the home screen: part of the home screen, not an app.
+    // Exact names, because "quicksearchbox" is also in the Google app's package name.
+    private val SYSTEM_SEARCH = setOf(
+        "com.heytap.quicksearchbox", "com.oplus.quicksearchbox", "com.oppo.quicksearchbox",
+        "com.coloros.quicksearchbox", "com.android.quicksearchbox", "com.samsung.android.app.galaxyfinder",
+    )
     private val SURFACE = listOf("com.android.systemui", "inputmethod", "com.google.android.permissioncontroller")
     private val EXEMPT = listOf(
         "com.android.settings", "com.oplus.settings", "com.coloros.settings", "dialer", "telecom", "incallui",
