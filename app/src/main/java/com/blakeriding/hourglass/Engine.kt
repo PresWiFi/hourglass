@@ -36,6 +36,10 @@ object Engine {
     /** Today's time per website. */
     val webToday: StateFlow<Map<String, Long>> = _web.asStateFlow()
 
+    /** The app Android's usage events say is on screen, as of the last tick. */
+    @Volatile var top: String? = null
+        private set
+
     /** Browser package and the site it shows, reported by [GuardService]. */
     @Volatile private var browser: Pair<String, String>? = null
     private var web = HashMap<String, Long>()
@@ -93,6 +97,7 @@ object Engine {
         feed(f, maxOf(f.lastTime + 1, f.dayStart - 4 * HOUR_MS), nowMs)
         val interactive = app.getSystemService(PowerManager::class.java).isInteractive
         val top = f.top
+        this.top = top
         trackWeb(top, now, interactive)
         val snap = f.snapshot(nowMs)
         _today.value = snap

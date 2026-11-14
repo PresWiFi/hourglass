@@ -2,6 +2,7 @@ package com.blakeriding.hourglass
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -22,6 +23,8 @@ class GuardService : AccessibilityService() {
     private var lastLogAt = 0L
     private var lastUrlReadAt = 0L
     private val recheck = Runnable { guard() }
+    private var lastDiscoverAt = 0L
+    private val discoverRecheck = Runnable { checkDiscover(retry = true) }
 
     override fun onServiceConnected() {
         instance = this
@@ -49,6 +52,7 @@ class GuardService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) Engine.poke()
         if (pkg == packageName) return
         BROWSERS[pkg]?.let { ids -> readUrl(pkg, ids, event.eventType) }
+        if (pkg == GOOGLE_APP) checkDiscover(retry = false)
         if (isSensitive(pkg) && protectionActive(Store.state.value, nowMs())) guard()
     }
 
@@ -111,6 +115,46 @@ class GuardService : AccessibilityService() {
         null
     }
 
+    /**
+     * The home screen's left page (Google Discover) is drawn by the Google app in a panel over the
+     * launcher, so usage events still say the launcher is open. Spot a full-screen Google panel while
+     * the launcher is on top and go back to the main home page. When the Google app is opened for
+     * real (search, Lens) usage events name it instead, so it's left alone, as is the invisible
+     * overlay it shows in the app switcher.
+     */
+    private fun checkDiscover(retry: Boolean) {
+        val s = Store.state.value
+        if (!s.content.blockDiscover || !s.enabled || s.passcode == null) return
+        if (breakUntil(s, nowMs()) != null) return
+        val t = SystemClock.elapsedRealtime()
+        if (!retry && t - lastDiscoverAt < 300L) return
+        val top = Engine.top ?: return
+        if (top !in Apps.launchers(this)) return
+        val screen = resources.displayMetrics
+        val feed = try {
+            windows.any { w ->
+                val root = w.root ?: return@any false
+                if (root.packageName?.toString() != GOOGLE_APP || root.childCount == 0) return@any false
+                val r = Rect().also { w.getBoundsInScreen(it) }
+                r.width() >= screen.widthPixels * 0.9 && r.height() >= screen.heightPixels * 0.5
+            }
+        } catch (_: Exception) {
+            false
+        }
+        if (!feed) return
+        lastDiscoverAt = t
+        // Home scrolls the launcher back to its main page; if the feed is still there, try Back.
+        performGlobalAction(if (retry) GLOBAL_ACTION_BACK else GLOBAL_ACTION_HOME)
+        if (!retry) {
+            handler.removeCallbacks(discoverRecheck)
+            handler.postDelayed(discoverRecheck, 700L)
+        }
+        if (t - lastToastAt > 3000L) {
+            lastToastAt = t
+            toast("Google Discover is blocked")
+        }
+    }
+
     private fun AccessibilityNodeInfo.has(text: String) = findAccessibilityNodeInfosByText(text).isNotEmpty()
 
     private fun isSensitive(pkg: String?) = pkg != null && SENSITIVE.any { it in pkg }
@@ -155,5 +199,7 @@ class GuardService : AccessibilityService() {
             "com.heytap.browser" to listOf("url_text"),
         )
         val browserPackages: Set<String> get() = BROWSERS.keys
+
+        private const val GOOGLE_APP = "com.google.android.googlequicksearchbox"
     }
 }

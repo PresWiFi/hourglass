@@ -599,6 +599,14 @@ fun ContentScreen(gate: Gate, unlocked: Boolean, onBack: () -> Unit) {
         }
         Footnote("Websites are checked in Chrome, Samsung Internet, Firefox, Edge, Brave, DuckDuckGo and Opera. Block other browsers with Blocked apps.")
 
+        SectionLabel("Home screen")
+        Card(Modifier.padding(horizontal = 16.dp)) {
+            SwitchRow("Block Google Discover", c.blockDiscover, subtitle = "The news feed when you swipe to the left page of the home screen") {
+                c = c.copy(blockDiscover = it)
+            }
+        }
+        Footnote("The Google app itself (search, Lens) still works. Emergency breaks unblock Discover too.")
+
         SectionLabel("Lock system settings")
         Card(Modifier.padding(horizontal = 16.dp)) {
             SwitchRow("Date & Time", c.lockDateTime, subtitle = "Stops changing the clock to get around limits") { c = c.copy(lockDateTime = it) }

@@ -107,6 +107,8 @@ data class ContentRules(
     val lockAccounts: Boolean = false,
     val lockDeveloper: Boolean = false,
     val lockPrivateDns: Boolean = false,
+    /** Sends you back from the Google Discover feed on the home screen's left page. */
+    val blockDiscover: Boolean = false,
 )
 
 val DEFAULT_ALLOWED_SITES = listOf("google.com", "wikipedia.org", "weather.gov")
