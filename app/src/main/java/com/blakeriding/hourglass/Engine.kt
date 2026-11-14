@@ -79,12 +79,29 @@ object Engine {
         }
     }
 
-    private fun safeTick() {
+    private val lock = Any()
+
+    private fun safeTick() = synchronized(lock) {
         try {
             tick()
         } catch (e: Exception) {
             Log.e("Hourglass", "tick failed", e)
         }
+    }
+
+    /**
+     * The app on screen right now, read fresh from the usage events. [top] can be up to a second old,
+     * which is long enough to mistake a just-opened app for the home screen.
+     */
+    fun freshTop(): String? = synchronized(lock) {
+        val f = fold ?: return top
+        try {
+            if (hasUsageAccess(app)) feed(f, maxOf(f.lastTime + 1, f.dayStart - 4 * HOUR_MS), System.currentTimeMillis())
+        } catch (e: Exception) {
+            Log.e("Hourglass", "freshTop failed", e)
+        }
+        top = f.top
+        f.top
     }
 
     private fun catOf(pkg: String) = Apps.category(app, pkg)

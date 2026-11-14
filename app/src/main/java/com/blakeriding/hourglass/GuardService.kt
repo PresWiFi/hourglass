@@ -23,7 +23,11 @@ class GuardService : AccessibilityService() {
     private var lastLogAt = 0L
     private var lastUrlReadAt = 0L
     private val recheck = Runnable { guard() }
-    private var lastDiscoverAt = 0L
+    private var discoverPending = false
+    private val discoverCheck = Runnable {
+        discoverPending = false
+        checkDiscover(retry = false)
+    }
     private val discoverRecheck = Runnable { checkDiscover(retry = true) }
 
     override fun onServiceConnected() {
@@ -52,7 +56,12 @@ class GuardService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) Engine.poke()
         if (pkg == packageName) return
         BROWSERS[pkg]?.let { ids -> readUrl(pkg, ids, event.eventType) }
-        if (pkg == GOOGLE_APP) checkDiscover(retry = false)
+        // Wait a moment: when the Google app or the app switcher opens, Android's usage events
+        // name it a few hundred ms after the window appears.
+        if (pkg == GOOGLE_APP && !discoverPending && Store.state.value.content.blockDiscover) {
+            discoverPending = true
+            handler.postDelayed(discoverCheck, DISCOVER_DELAY_MS)
+        }
         if (isSensitive(pkg) && protectionActive(Store.state.value, nowMs())) guard()
     }
 
@@ -126,9 +135,7 @@ class GuardService : AccessibilityService() {
         val s = Store.state.value
         if (!s.content.blockDiscover || !s.enabled || s.passcode == null) return
         if (breakUntil(s, nowMs()) != null) return
-        val t = SystemClock.elapsedRealtime()
-        if (!retry && t - lastDiscoverAt < 300L) return
-        val top = Engine.top ?: return
+        val top = Engine.freshTop() ?: return
         if (top !in Apps.launchers(this)) return
         val screen = resources.displayMetrics
         val feed = try {
@@ -142,7 +149,7 @@ class GuardService : AccessibilityService() {
             false
         }
         if (!feed) return
-        lastDiscoverAt = t
+        val t = SystemClock.elapsedRealtime()
         // Home scrolls the launcher back to its main page; if the feed is still there, try Back.
         performGlobalAction(if (retry) GLOBAL_ACTION_BACK else GLOBAL_ACTION_HOME)
         if (!retry) {
@@ -201,5 +208,6 @@ class GuardService : AccessibilityService() {
         val browserPackages: Set<String> get() = BROWSERS.keys
 
         private const val GOOGLE_APP = "com.google.android.googlequicksearchbox"
+        private const val DISCOVER_DELAY_MS = 400L
     }
 }
