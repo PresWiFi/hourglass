@@ -261,6 +261,21 @@ class LogicTest {
         assertNull(f.top)
     }
 
+    @Test fun notCountedAppIsLeftOutButStillOnTop() {
+        val f = DayFold(startOfDay(LocalDate.of(2026, 11, 16), zone), { it == "launcher" || it == "com.maps" }, catOf)
+        val t = f.dayStart + 17 * HOUR_MS
+        f.feed(t, Ev.RESUMED, "com.insta")
+        f.feed(t + 5 * MINUTE_MS, Ev.PAUSED, "com.insta")
+        f.feed(t + 5 * MINUTE_MS, Ev.RESUMED, "com.maps")
+        val s = f.snapshot(t + 45 * MINUTE_MS)
+        assertEquals(5 * MINUTE_MS, s.totalMs)
+        assertNull(s.apps["com.maps"])
+        // Still known to be on screen, so Downtime can block it.
+        assertEquals("com.maps", f.top)
+        val limit = AppLimit("n", categories = setOf(Cat.OTHER), minutes = 10)
+        assertEquals(10 * MINUTE_MS, limitLeftMs(limit, Usage(s.apps, emptyMap(), catOf), at(16, 17)))
+    }
+
     @Test fun openAppCountsUpToNowAndIsTop() {
         val f = fold()
         val t = f.dayStart + 10 * HOUR_MS

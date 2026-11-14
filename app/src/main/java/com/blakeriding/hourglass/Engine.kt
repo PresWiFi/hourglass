@@ -106,6 +106,9 @@ object Engine {
 
     private fun catOf(pkg: String) = Apps.category(app, pkg)
 
+    /** Not counted as screen time: the home screen and system UI, plus the user's Not Counted apps. */
+    private fun ignored(pkg: String) = Apps.isSystemSurface(app, pkg) || pkg in Store.state.value.notCounted
+
     private fun tick() {
         if (!hasUsageAccess(app)) return
         val now = ZonedDateTime.now(ZoneId.systemDefault())
@@ -148,7 +151,7 @@ object Engine {
             val snap = current.snapshot(startOfDay(day, zone))
             Store.update { it.copy(history = it.history + (prevKey to snap)) }
         }
-        val f = DayFold(startOfDay(day, zone), { Apps.isSystemSurface(app, it) }, ::catOf)
+        val f = DayFold(startOfDay(day, zone), ::ignored, ::catOf)
         fold = f
         foldDay = day
         warned.clear()
@@ -166,7 +169,7 @@ object Engine {
             if (key in have) continue
             val start = startOfDay(d, zone)
             val end = startOfDay(d.plusDays(1), zone)
-            val f = DayFold(start, { Apps.isSystemSurface(app, it) }, ::catOf)
+            val f = DayFold(start, ::ignored, ::catOf)
             feed(f, start - 4 * HOUR_MS, end)
             val snap = f.snapshot(end)
             if (snap.totalMs > 0 || snap.pickups > 0) found[key] = snap
@@ -256,8 +259,27 @@ object Engine {
     /** Forget the cached fold so category changes recount. */
     fun recount() {
         handler?.post {
-            fold = null
-            foldDay = null
+            synchronized(lock) {
+                fold = null
+                foldDay = null
+            }
+            safeTick()
+        }
+    }
+
+    /**
+     * Recount today and the past week from Android's usage log (it keeps about a week), e.g. after the
+     * Not Counted list changes. Older days stay as they were recorded.
+     */
+    fun recountWeek() {
+        handler?.post {
+            synchronized(lock) {
+                val today = LocalDate.now()
+                val keys = (1L..7L).map { dayKey(today.minusDays(it)) }.toSet()
+                Store.update { it.copy(history = it.history - keys) }
+                fold = null
+                foldDay = null
+            }
             safeTick()
         }
     }

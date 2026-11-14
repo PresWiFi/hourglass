@@ -17,6 +17,8 @@ data class AppState(
     val limits: List<AppLimit> = emptyList(),
     /** Apps that work during Downtime and are never limited (like iOS "Always Allowed"). */
     val alwaysAllowed: Set<String> = emptySet(),
+    /** Apps left out of screen time totals and limits (e.g. Maps while driving). Still blocked by Downtime. */
+    val notCounted: Set<String> = emptySet(),
     val content: ContentRules = ContentRules(),
     val breaks: BreakRules = BreakRules(),
     /** Start times of emergency breaks, trimmed to the last two days. */

@@ -29,6 +29,7 @@ import com.blakeriding.hourglass.ui.HourglassTheme
 import com.blakeriding.hourglass.ui.LimitEditScreen
 import com.blakeriding.hourglass.ui.LimitsListScreen
 import com.blakeriding.hourglass.ui.LimitsScreen
+import com.blakeriding.hourglass.ui.NotCountedScreen
 import com.blakeriding.hourglass.ui.PasscodeDialog
 import com.blakeriding.hourglass.ui.SettingsScreen
 import com.blakeriding.hourglass.ui.SetupScreen
@@ -40,6 +41,7 @@ sealed interface Route {
     data object AppLimits : Route
     data class LimitEdit(val id: String?, val presetApp: String? = null) : Route
     data object AlwaysAllowed : Route
+    data object NotCounted : Route
     data object Content : Route
     data object Tamper : Route
 }
@@ -110,6 +112,7 @@ class MainActivity : ComponentActivity() {
                     Route.AppLimits -> LimitsListScreen(gate, unlocked, push, pop)
                     is Route.LimitEdit -> LimitEditScreen(top.id, top.presetApp, gate, unlocked, pop)
                     Route.AlwaysAllowed -> AlwaysAllowedScreen(gate, unlocked, pop)
+                    Route.NotCounted -> NotCountedScreen(gate, unlocked, pop)
                     Route.Content -> ContentScreen(gate, unlocked, pop)
                     Route.Tamper -> TamperScreen(pop)
                 }

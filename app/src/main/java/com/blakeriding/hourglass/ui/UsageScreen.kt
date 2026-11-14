@@ -319,6 +319,7 @@ private fun CategoryLegend(sums: List<DaySummary>) {
 private fun AppDetailDialog(pkg: String, ms: Long, week: Boolean, gate: Gate, onDismiss: () -> Unit, onAddLimit: () -> Unit) {
     val context = LocalContext.current
     var cat by remember { mutableStateOf(Apps.category(context, pkg)) }
+    val notCounted = pkg in Store.state.collectAsState().value.notCounted
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(Apps.label(context, pkg)) },
@@ -340,6 +341,15 @@ private fun AppDetailDialog(pkg: String, ms: Long, week: Boolean, gate: Gate, on
                         }, label = { Text(c.label, fontSize = 12.sp) })
                     }
                 }
+                Spacer(Modifier.height(8.dp))
+                // Leaving an app out of the count also takes it out of limits, so it needs the passcode.
+                TextButton(onClick = {
+                    gate {
+                        Store.update { it.copy(notCounted = if (notCounted) it.notCounted - pkg else it.notCounted + pkg) }
+                        Engine.recountWeek()
+                        onDismiss()
+                    }
+                }) { Text(if (notCounted) "Count This App Again" else "Don't Count This App") }
             }
         },
         confirmButton = { TextButton(onClick = onAddLimit) { Text("Add Limit") } },

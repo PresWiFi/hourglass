@@ -263,6 +263,8 @@ fun LimitsScreen(gate: Gate, unlocked: Boolean, push: (Route) -> Unit) {
             Divider()
             ListRow("Always Allowed", subtitle = "${s.alwaysAllowed.size} apps you can use at any time", onClick = { push(Route.AlwaysAllowed) })
             Divider()
+            ListRow("Not Counted", subtitle = "${s.notCounted.size} apps left out of screen time, like Maps", onClick = { push(Route.NotCounted) })
+            Divider()
             ListRow("Content & Privacy Restrictions", subtitle = "Blocked apps, websites, installs, locked settings", onClick = { push(Route.Content) })
         }
 
@@ -533,6 +535,42 @@ fun AlwaysAllowedScreen(gate: Gate, unlocked: Boolean, onBack: () -> Unit) {
     if (picker) {
         AppPickerDialog("Always Allowed", s.alwaysAllowed, onDismiss = { picker = false }) { set ->
             Store.update { it.copy(alwaysAllowed = set) }
+            picker = false
+        }
+    }
+}
+
+// ---------- Not counted ----------
+
+@Composable
+fun NotCountedScreen(gate: Gate, unlocked: Boolean, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val s by Store.state.collectAsState()
+    var picker by remember { mutableStateOf(false) }
+    fun save(set: Set<String>) {
+        Store.update { it.copy(notCounted = set) }
+        Engine.recountWeek()
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+        TopBar("Not Counted", onBack)
+        Footnote(
+            "Time in these apps doesn't count toward your screen time, charts or App Limits. Use it for things like " +
+                "navigation. They're still blocked during Downtime unless they're also Always Allowed. Changes recount the past week.",
+        )
+        Card(Modifier.padding(horizontal = 16.dp)) {
+            s.notCounted.sortedBy { Apps.label(context, it) }.forEach { pkg ->
+                ListRow(Apps.label(context, pkg), leading = { AppIcon(pkg, 28) }, trailing = {
+                    TextButton(onClick = { gate { save(s.notCounted - pkg) } }) { Text("Remove", color = Danger) }
+                })
+                Divider()
+            }
+            ListRow("Choose Apps", titleColor = Accent, onClick = { gate { picker = true } })
+        }
+        LockHint(unlocked)
+    }
+    if (picker) {
+        AppPickerDialog("Not Counted", s.notCounted, onDismiss = { picker = false }) { set ->
+            save(set)
             picker = false
         }
     }

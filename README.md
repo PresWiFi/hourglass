@@ -17,6 +17,7 @@ Screen Time for Android, modeled on iOS Screen Time, and built to be hard to get
 | Content & Privacy: block apps, installing/deleting apps, adult sites, allowed websites only | Same, for Chrome, Samsung Internet, Firefox, Edge, Brave, DuckDuckGo, Opera |
 | Screen Time passcode, with lockout after wrong tries | 4 digits, PBKDF2-hashed, 1/5/15/60 minute lockouts, plus a recovery code |
 | Weekly report notification | Sundays at 7 PM |
+| Not in iOS | Not Counted apps (e.g. Maps while driving): left out of totals, charts and limits, still subject to Downtime |
 | Not in iOS | Emergency breaks: 2 × 5 minutes a day (passcode to change), tamper log, locks for Date & time / Accounts / Developer options / Private DNS |
 
 Not included: Communication Limits (Android only allows the default phone app to block calls), Screen Distance, sharing across devices.
