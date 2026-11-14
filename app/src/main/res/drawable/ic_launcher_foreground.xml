@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An hourglass. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M36,32 H72 V36 H36 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M36,72 H72 V76 H36 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M40,36 H68 C68,46 60,50 57,54 C60,58 68,62 68,72 H40 C40,62 48,58 51,54 C48,50 40,46 40,36 Z M45,40 C46,46 52,49 54,52 C56,49 62,46 63,40 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M45,70 C47,64 52,62 54,60 C56,62 61,64 63,70 Z" />
+</vector>

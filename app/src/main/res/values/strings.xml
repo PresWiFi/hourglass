@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Hourglass</string>
+    <string name="admin_description">Stops Hourglass from being uninstalled while Screen Time is on. Turn Screen Time off with your passcode first.</string>
+    <string name="admin_disable_warning">Screen Time is on. Turning this off is logged. Use your Screen Time passcode in Hourglass to turn it off properly.</string>
+    <string name="accessibility_description">Hourglass watches which app and website is on screen so it can enforce Downtime, App Limits and website rules, and stops Screen Time from being switched off without your passcode. Nothing leaves your phone.</string>
+    <string name="notif_listener_label">Hourglass notification counter</string>
+    <string name="protected_toast">Protected by Screen Time</string>
+</resources>
