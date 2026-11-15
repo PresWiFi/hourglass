@@ -30,7 +30,8 @@ While Screen Time is on (a passcode is set and it hasn't been turned off):
 - **The accessibility service** backs out of any Settings, installer or Play Store screen that shows Hourglass alongside words like Uninstall, Force stop, Deactivate, Accessibility, Usage access or Battery. This covers app info, the uninstall dialog, device admin, and the accessibility list.
 - If the accessibility service gets switched off anyway, the always-on monitor notices, sends a notification and logs it. Force-stops also go in the tamper log.
 - To uninstall properly: Settings › Turn Off Screen Time (needs the passcode). That also removes device admin.
-- **Pause Protection for 10 Minutes** (needs the passcode) lets you update Hourglass or change a locked system setting. Limits stay on during the pause.
+- Updating Hourglass works without a pause (from 0.3.1): the installer's update screens are let through, since Android only accepts an update signed with the same key. Uninstalling stays blocked.
+- **Pause Protection for 10 Minutes** (needs the passcode) lets you change a locked system setting. Limits stay on during the pause.
 
 What Android doesn't let a normal app stop: a factory reset, Safe Mode (third-party apps don't run there), and `adb` from a computer. Turn on the Developer Options lock to close the adb route.
 

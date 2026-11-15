@@ -87,6 +87,9 @@ class GuardService : AccessibilityService() {
             val pkg = root.packageName?.toString()
             if (!isSensitive(pkg)) return@firstNotNullOfOrNull null
             when {
+                // Updating Hourglass is fine: Android only installs an update signed with the same key,
+                // and a downgrade needs an uninstall, which stays blocked.
+                root.has(label) && isUpdate(root) -> null
                 // Anything about Hourglass itself in Settings, the installer or a store.
                 root.has(label) && (pkg?.contains("packageinstaller") == true || PROTECT_WORDS.any { root.has(it) }) -> "Hourglass settings"
                 s.content.lockDateTime && DATE_WORDS.any { root.has(it) } -> "Date & time"
@@ -164,6 +167,10 @@ class GuardService : AccessibilityService() {
 
     private fun AccessibilityNodeInfo.has(text: String) = findAccessibilityNodeInfosByText(text).isNotEmpty()
 
+    /** The installer's "Update this app?", "Installing…" and "App installed" screens. Text matching ignores case. */
+    private fun isUpdate(root: AccessibilityNodeInfo) =
+        UPDATE_WORDS.any { root.has(it) } && !root.has("uninstall") && PROTECT_WORDS.none { it != "Remove" && root.has(it) }
+
     private fun isSensitive(pkg: String?) = pkg != null && SENSITIVE.any { it in pkg }
 
     companion object {
@@ -182,6 +189,7 @@ class GuardService : AccessibilityService() {
             "Display over other apps", "Clear storage", "Clear data", "Disable", "Notification access",
             "Battery", "Use Hourglass", "Permit usage", "Remove",
         )
+        private val UPDATE_WORDS = listOf("update", "Installing", "installed")
         private val DATE_WORDS = listOf("Set time automatically", "Automatic date", "Set date", "Use network-provided time", "Set time zone automatically")
         private val ACCOUNT_WORDS = listOf("Add account", "Remove account")
         private val DEV_WORDS = listOf("USB debugging", "Wireless debugging")
