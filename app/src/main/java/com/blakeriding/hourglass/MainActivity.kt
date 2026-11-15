@@ -50,10 +50,11 @@ enum class Tab(val label: String) { USAGE("Usage"), LIMITS("Screen Time"), SETTI
 
 /**
  * Wraps changes in the Screen Time passcode, like iOS: once entered, settings stay unlocked until
- * you leave the app.
+ * you leave the app. Changes that only make things stricter go straight through.
  */
 class Gate(private val ask: (() -> Unit) -> Unit) {
     operator fun invoke(action: () -> Unit) = ask(action)
+    fun unless(stricter: Boolean, action: () -> Unit) = if (stricter) action() else ask(action)
 }
 
 class MainActivity : ComponentActivity() {
@@ -144,7 +145,7 @@ class MainActivity : ComponentActivity() {
         ) { pad ->
             Box(Modifier.padding(pad)) {
                 when (tab) {
-                    Tab.USAGE -> UsageScreen(gate, onAddLimit = { pkg -> gate { push(Route.LimitEdit(null, pkg)) } })
+                    Tab.USAGE -> UsageScreen(gate, onAddLimit = { pkg -> push(Route.LimitEdit(null, pkg)) })
                     Tab.LIMITS -> LimitsScreen(gate, unlocked, push)
                     Tab.SETTINGS -> SettingsScreen(gate, unlocked, push, onLock = { unlocked = false })
                 }

@@ -59,12 +59,15 @@ import com.blakeriding.hourglass.WebMode
 import com.blakeriding.hourglass.Window
 import com.blakeriding.hourglass.breakUntil
 import com.blakeriding.hourglass.breaksLeft
+import com.blakeriding.hourglass.contentStricter
 import com.blakeriding.hourglass.domainOf
 import com.blakeriding.hourglass.downtimeActive
+import com.blakeriding.hourglass.downtimeStricter
 import com.blakeriding.hourglass.formatClock
 import com.blakeriding.hourglass.formatDuration
 import com.blakeriding.hourglass.formatMinuteOfDay
 import com.blakeriding.hourglass.limitLeftMs
+import com.blakeriding.hourglass.limitStricter
 import com.blakeriding.hourglass.limitTitle
 import com.blakeriding.hourglass.limitUsedMs
 import com.blakeriding.hourglass.newId
@@ -90,7 +93,7 @@ fun TopBar(title: String, onBack: () -> Unit, action: (@Composable () -> Unit)? 
 
 @Composable
 fun LockHint(unlocked: Boolean) {
-    if (!unlocked) Footnote("🔒 Changes need your Screen Time passcode.")
+    if (!unlocked) Footnote("🔒 Making things stricter is free. Loosening them needs your Screen Time passcode.")
 }
 
 @Composable
@@ -314,7 +317,7 @@ fun DowntimeScreen(gate: Gate, unlocked: Boolean, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         TopBar("Downtime", onBack) {
             TextButton(onClick = {
-                gate {
+                gate.unless(downtimeStricter(saved.downtime, d)) {
                     Store.update { it.copy(downtime = d) }
                     Engine.poke()
                     onBack()
@@ -404,7 +407,7 @@ fun LimitsListScreen(gate: Gate, unlocked: Boolean, push: (Route) -> Unit, onBac
                 )
             }
             if (s.limits.isNotEmpty()) Divider()
-            ListRow("Add Limit", titleColor = Accent, onClick = { gate { push(Route.LimitEdit(null)) } })
+            ListRow("Add Limit", titleColor = Accent, onClick = { push(Route.LimitEdit(null)) })
         }
         LockHint(unlocked)
     }
@@ -425,8 +428,8 @@ fun LimitEditScreen(id: String?, presetApp: String?, gate: Gate, unlocked: Boole
         TopBar(if (existing == null) "New Limit" else "Edit Limit", onBack) {
             TextButton(
                 onClick = {
-                    gate {
-                        val final = if (customize) l else l.copy(dayMinutes = emptyMap())
+                    val final = if (customize) l else l.copy(dayMinutes = emptyMap())
+                    gate.unless(limitStricter(existing, final)) {
                         Store.update { st ->
                             st.copy(limits = if (existing == null) st.limits + final else st.limits.map { if (it.id == final.id) final else it })
                         }
@@ -524,18 +527,18 @@ fun AlwaysAllowedScreen(gate: Gate, unlocked: Boolean, onBack: () -> Unit) {
         Card(Modifier.padding(horizontal = 16.dp)) {
             s.alwaysAllowed.sortedBy { Apps.label(context, it) }.forEach { pkg ->
                 ListRow(Apps.label(context, pkg), leading = { AppIcon(pkg, 28) }, trailing = {
-                    TextButton(onClick = { gate { Store.update { it.copy(alwaysAllowed = it.alwaysAllowed - pkg) } } }) { Text("Remove", color = Danger) }
+                    TextButton(onClick = { Store.update { it.copy(alwaysAllowed = it.alwaysAllowed - pkg) } }) { Text("Remove", color = Danger) }
                 })
                 Divider()
             }
-            ListRow("Choose Apps", titleColor = Accent, onClick = { gate { picker = true } })
+            ListRow("Choose Apps", titleColor = Accent, onClick = { picker = true })
         }
         LockHint(unlocked)
     }
     if (picker) {
         AppPickerDialog("Always Allowed", s.alwaysAllowed, onDismiss = { picker = false }) { set ->
-            Store.update { it.copy(alwaysAllowed = set) }
             picker = false
+            gate.unless(s.alwaysAllowed.containsAll(set)) { Store.update { it.copy(alwaysAllowed = set) } }
         }
     }
 }
@@ -560,18 +563,18 @@ fun NotCountedScreen(gate: Gate, unlocked: Boolean, onBack: () -> Unit) {
         Card(Modifier.padding(horizontal = 16.dp)) {
             s.notCounted.sortedBy { Apps.label(context, it) }.forEach { pkg ->
                 ListRow(Apps.label(context, pkg), leading = { AppIcon(pkg, 28) }, trailing = {
-                    TextButton(onClick = { gate { save(s.notCounted - pkg) } }) { Text("Remove", color = Danger) }
+                    TextButton(onClick = { save(s.notCounted - pkg) }) { Text("Remove", color = Danger) }
                 })
                 Divider()
             }
-            ListRow("Choose Apps", titleColor = Accent, onClick = { gate { picker = true } })
+            ListRow("Choose Apps", titleColor = Accent, onClick = { picker = true })
         }
         LockHint(unlocked)
     }
     if (picker) {
         AppPickerDialog("Not Counted", s.notCounted, onDismiss = { picker = false }) { set ->
-            save(set)
             picker = false
+            gate.unless(s.notCounted.containsAll(set)) { save(set) }
         }
     }
 }
@@ -588,7 +591,7 @@ fun ContentScreen(gate: Gate, unlocked: Boolean, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         TopBar("Content & Privacy", onBack) {
             TextButton(onClick = {
-                gate {
+                gate.unless(contentStricter(saved.content, c)) {
                     Store.update { it.copy(content = c) }
                     Engine.poke()
                     onBack()

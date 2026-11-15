@@ -336,4 +336,57 @@ class LogicTest {
         assertEquals("Social", limitTitle(AppLimit("1", categories = setOf(Cat.SOCIAL))) { names[it]!! })
         assertEquals("Instagram, TikTok + 1", limitTitle(AppLimit("1", apps = setOf("a", "b", "c"))) { names[it]!! })
     }
+
+    // ---------- Stricter changes ----------
+
+    @Test fun downtimeStricterOnlyWhenItCoversAtLeastTheSameTime() {
+        val old = Downtime(enabled = true, window = Window(22 * 60, 7 * 60))
+        assertTrue(downtimeStricter(old, old.copy(window = Window(21 * 60, 8 * 60))))
+        assertFalse(downtimeStricter(old, old.copy(window = Window(23 * 60, 7 * 60))))
+        assertFalse(downtimeStricter(old, old.copy(enabled = false)))
+        assertFalse(downtimeStricter(old, old.copy(blockAtDowntime = false)))
+        // Customizing days: dropping Saturday loosens, keeping every day as-is doesn't.
+        val custom = old.copy(everyDay = false, days = (1..7).associateWith { old.window })
+        assertTrue(downtimeStricter(old, custom))
+        assertFalse(downtimeStricter(old, custom.copy(days = custom.days - 6)))
+        assertTrue(downtimeStricter(Downtime(enabled = false), old))
+    }
+
+    @Test fun limitStricterNeedsMoreTargetsAndLessTime() {
+        val old = AppLimit("1", apps = setOf("a"), domains = setOf("youtube.com"), minutes = 60)
+        assertTrue(limitStricter(null, old))
+        assertTrue(limitStricter(old, old.copy(minutes = 30, apps = setOf("a", "b"))))
+        assertFalse(limitStricter(old, old.copy(minutes = 90)))
+        assertFalse(limitStricter(old, old.copy(apps = setOf("b"))))
+        assertFalse(limitStricter(old, old.copy(domains = setOf("m.youtube.com"))))
+        assertFalse(limitStricter(old, old.copy(dayMinutes = mapOf(6 to 120))))
+        assertFalse(limitStricter(old, old.copy(enabled = false)))
+        assertFalse(limitStricter(old, old.copy(blockAtEnd = false)))
+        assertTrue(limitStricter(old.copy(enabled = false), old.copy(minutes = 240)))
+    }
+
+    @Test fun breaksAndCategoriesStricter() {
+        assertTrue(breaksStricter(BreakRules(2, 5), BreakRules(1, 5)))
+        assertFalse(breaksStricter(BreakRules(2, 5), BreakRules(2, 10)))
+        val limits = listOf(AppLimit("1", categories = setOf(Cat.SOCIAL)))
+        assertTrue(categoryStricter(limits, Cat.OTHER, Cat.SOCIAL))
+        assertFalse(categoryStricter(limits, Cat.SOCIAL, Cat.OTHER))
+    }
+
+    @Test fun contentStricterChecksEveryRule() {
+        val old = ContentRules(blockedApps = setOf("a"), webMode = WebMode.LIMIT_ADULT, blockedSites = listOf("reddit.com"), allowedSites = emptyList())
+        assertTrue(contentStricter(old, old.copy(blockedApps = setOf("a", "b"), blockInstalls = true, lockAccounts = true)))
+        assertFalse(contentStricter(old, old.copy(blockedApps = emptySet())))
+        assertFalse(contentStricter(old, old.copy(lockDateTime = false)))
+        assertFalse(contentStricter(old, old.copy(webMode = WebMode.UNRESTRICTED)))
+        assertFalse(contentStricter(old, old.copy(blockedSites = emptyList())))
+        assertTrue(contentStricter(old, old.copy(blockedSites = listOf("reddit.com", "x.com"))))
+        assertFalse(contentStricter(old, old.copy(allowedSites = listOf("pornhub.com"))))
+        // Allowed Websites Only can't allow a site that was blocked.
+        assertTrue(contentStricter(old, old.copy(webMode = WebMode.ALLOWED_ONLY, allowedSites = listOf("wikipedia.org"))))
+        assertFalse(contentStricter(old, old.copy(webMode = WebMode.ALLOWED_ONLY, allowedSites = listOf("old.reddit.com"))))
+        val only = ContentRules(webMode = WebMode.ALLOWED_ONLY, allowedSites = listOf("wikipedia.org"))
+        assertTrue(contentStricter(only, only.copy(allowedSites = emptyList())))
+        assertFalse(contentStricter(only, only.copy(allowedSites = listOf("wikipedia.org", "youtube.com"))))
+    }
 }

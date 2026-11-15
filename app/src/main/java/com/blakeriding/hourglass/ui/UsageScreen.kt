@@ -49,6 +49,7 @@ import com.blakeriding.hourglass.DaySummary
 import com.blakeriding.hourglass.Engine
 import com.blakeriding.hourglass.Gate
 import com.blakeriding.hourglass.Store
+import com.blakeriding.hourglass.categoryStricter
 import com.blakeriding.hourglass.covers
 import com.blakeriding.hourglass.coversDomain
 import com.blakeriding.hourglass.dayKey
@@ -331,8 +332,8 @@ private fun AppDetailDialog(pkg: String, ms: Long, week: Boolean, gate: Gate, on
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Cat.entries.forEach { c ->
                         FilterChip(selected = cat == c, onClick = {
-                            // Moving an app out of a limited category would get around the limit, so it needs the passcode.
-                            gate {
+                            // Moving an app out of a limited category would get around the limit, so that needs the passcode.
+                            gate.unless(categoryStricter(Store.state.value.limits, cat, c)) {
                                 cat = c
                                 Store.update { it.copy(categoryOverrides = it.categoryOverrides + (pkg to c)) }
                                 Apps.invalidateCategories()
@@ -342,9 +343,9 @@ private fun AppDetailDialog(pkg: String, ms: Long, week: Boolean, gate: Gate, on
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                // Leaving an app out of the count also takes it out of limits, so it needs the passcode.
+                // Leaving an app out of the count also takes it out of limits, so that needs the passcode. Counting it again doesn't.
                 TextButton(onClick = {
-                    gate {
+                    gate.unless(notCounted) {
                         Store.update { it.copy(notCounted = if (notCounted) it.notCounted - pkg else it.notCounted + pkg) }
                         Engine.recountWeek()
                         onDismiss()

@@ -3,6 +3,7 @@ package com.blakeriding.hourglass
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 // Pure rules: no Android, no wall clock. Everything here is unit tested.
@@ -189,6 +190,61 @@ fun decideWeb(s: AppState, domain: String, now: ZonedDateTime, u: Usage): Block?
         .filter { it.enabled && it.coversDomain(domain) && limitLeftMs(it, u, now) <= 0 }
         .minByOrNull { if (it.blockAtEnd) 0 else 1 }
         ?.let { Block(BlockKind.LIMIT, target, strict = it.blockAtEnd, limitId = it.id, minutes = it.minutesOn(now.dayOfWeek.value)) }
+}
+
+// ---------- Stricter changes ----------
+// A change that only tightens the rules doesn't need the passcode. Anything that could loosen them does.
+
+private fun kept(old: Boolean, new: Boolean) = !old || new
+
+/** Every minute of the week that was Downtime still is, and it still blocks if it did. */
+fun downtimeStricter(old: Downtime, new: Downtime): Boolean {
+    if (!old.enabled) return true
+    if (!new.enabled || !kept(old.blockAtDowntime, new.blockAtDowntime)) return false
+    val monday = LocalDate.of(2024, 1, 1)
+    for (day in 0L until 7L) for (m in 0 until 24 * 60) {
+        val t = monday.plusDays(day).atTime(m / 60, m % 60).atZone(ZoneOffset.UTC)
+        if (scheduledDowntime(old, t) && !scheduledDowntime(new, t)) return false
+    }
+    return true
+}
+
+/** Same or more apps, categories and sites, the same or less time every day, still on and still blocking. */
+fun limitStricter(old: AppLimit?, new: AppLimit): Boolean {
+    if (old == null || !old.enabled) return true
+    return new.enabled && kept(old.blockAtEnd, new.blockAtEnd) &&
+        new.apps.containsAll(old.apps) && new.categories.containsAll(old.categories) &&
+        old.domains.all { d -> new.domains.any { domainMatches(d, it) } } &&
+        (1..7).all { new.minutesOn(it) <= old.minutesOn(it) }
+}
+
+fun breaksStricter(old: BreakRules, new: BreakRules) = new.perDay <= old.perDay && new.minutes <= old.minutes
+
+/** Moving an app to [to] keeps it under every enabled limit that covered its category [from]. */
+fun categoryStricter(limits: List<AppLimit>, from: Cat, to: Cat) =
+    limits.filter { it.enabled && from in it.categories }.all { to in it.categories }
+
+fun contentStricter(old: ContentRules, new: ContentRules): Boolean =
+    new.blockedApps.containsAll(old.blockedApps) &&
+        kept(old.blockInstalls, new.blockInstalls) && kept(old.blockDiscover, new.blockDiscover) &&
+        kept(old.lockDateTime, new.lockDateTime) && kept(old.lockAccounts, new.lockAccounts) &&
+        kept(old.lockDeveloper, new.lockDeveloper) && kept(old.lockPrivateDns, new.lockPrivateDns) &&
+        webStricter(old, new)
+
+private fun webStricter(old: ContentRules, new: ContentRules): Boolean {
+    if (new.webMode < old.webMode) return false
+    fun covered(d: String, rules: List<String>) = rules.any { domainMatches(d, it) }
+    fun overlaps(a: String, b: String) = domainMatches(a, b) || domainMatches(b, a)
+    return when (new.webMode) {
+        // Only the allowed list counts: each site on it must have been reachable before.
+        WebMode.ALLOWED_ONLY -> new.allowedSites.all { d ->
+            if (old.webMode == WebMode.ALLOWED_ONLY) covered(d, old.allowedSites)
+            else old.blockedSites.none { overlaps(d, it) } && (old.webMode == WebMode.UNRESTRICTED || !isAdultDomain(d))
+        }
+        else -> old.blockedSites.all { covered(it, new.blockedSites) } &&
+            // "Always allow" lets adult sites through, so new exceptions loosen the adult filter.
+            (new.webMode == WebMode.UNRESTRICTED || old.webMode == WebMode.UNRESTRICTED || new.allowedSites.all { covered(it, old.allowedSites) })
+    }
 }
 
 /** App stores and the system installer (installing and uninstalling apps). */

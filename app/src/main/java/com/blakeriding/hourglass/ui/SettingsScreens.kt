@@ -54,6 +54,7 @@ import com.blakeriding.hourglass.Store
 import com.blakeriding.hourglass.TamperKind
 import com.blakeriding.hourglass.adminIntent
 import com.blakeriding.hourglass.batteryIntent
+import com.blakeriding.hourglass.breaksStricter
 import com.blakeriding.hourglass.canDrawOverlays
 import com.blakeriding.hourglass.canNotify
 import com.blakeriding.hourglass.formatClock
@@ -167,7 +168,7 @@ fun SetupScreen() {
                 "Downtime: schedule time away from your screen",
                 "App Limits for apps, categories and websites",
                 "Content & Privacy: blocked apps, adult sites, installs, locked settings",
-                "A separate Screen Time passcode, needed to change anything",
+                "A separate Screen Time passcode, needed to loosen anything",
                 "Emergency breaks: a few minutes off the leash, twice a day",
                 "Hard to uninstall while Screen Time is on",
             ).forEach { Text("•  $it", modifier = Modifier.padding(vertical = 4.dp)) }
@@ -265,7 +266,7 @@ fun SettingsScreen(gate: Gate, unlocked: Boolean, push: (Route) -> Unit, onLock:
 
         SectionLabel("Screen Time")
         Card(Modifier.padding(horizontal = 16.dp)) {
-            ListRow("Emergency Breaks", value = "${s.breaks.perDay} × ${s.breaks.minutes} min", onClick = { gate { breaksEdit = s.breaks } })
+            ListRow("Emergency Breaks", value = "${s.breaks.perDay} × ${s.breaks.minutes} min", onClick = { breaksEdit = s.breaks })
             Divider()
             ListRow("Change Screen Time Passcode", onClick = { gate { changing = true } })
             Divider()
@@ -323,8 +324,8 @@ fun SettingsScreen(gate: Gate, unlocked: Boolean, push: (Route) -> Unit, onLock:
             },
             confirmButton = {
                 TextButton(onClick = {
-                    Store.update { it.copy(breaks = b) }
                     breaksEdit = null
+                    gate.unless(breaksStricter(s.breaks, b)) { Store.update { it.copy(breaks = b) } }
                 }) { Text("Save") }
             },
             dismissButton = { TextButton(onClick = { breaksEdit = null }) { Text("Cancel") } },
